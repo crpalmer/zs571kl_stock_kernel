@@ -1,0 +1,49 @@
+
+qcom,2640750_asus_sivanew_3200mah_averaged_masterslave_oct6th2016 {
+	/* #2640750_Asus_SivaNew_3200mAh_averaged_MasterSlave_Oct6th2016*/
+	qcom,max-voltage-uv = <4380000>;
+	qcom,nom-batt-capacity-mah = <3200>;
+	qcom,batt-id-kohm = <51>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "2640750_asus_sivanew_3200mah_averaged_masterslave_oct6th2016";
+	qcom,chg-rslow-comp-c1 = <2612651>;
+	qcom,chg-rslow-comp-c2 = <3011871>;
+	qcom,chg-rs-to-rslow = <1374613>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0xD895>;
+	qcom,gui-version = "PMI8996GUI - 1.1.0.4";
+	qcom,fg-profile-data = [
+		 FA 83 C2 7D 
+		 B1 81 33 7C 
+		 74 83 F5 77 
+		 AD 8A BE 94 
+		 03 82 0B 99 
+		 41 B6 2F C1 
+		 5E 18 06 88 
+		 EA 7D B7 81 
+		 2B 7C 76 83 
+		 23 77 38 8B 
+		 BF 95 41 82 
+		 AD 98 61 B6 
+		 D4 C1 58 15 
+		 6C 0C 0A 59 
+		 91 6F E7 FB 
+		 9A 3D 87 44 
+		 27 38 00 00 
+		 2F 46 51 31 
+		 DD 2F 00 00 
+		 00 00 00 00 
+		 00 00 00 00 
+		 AB 72 74 71 
+		 19 5C CC 81 
+		 9E 75 B2 68 
+		 8B 59 05 7A 
+		 32 6F B0 59 
+		 4C 66 C0 A8 
+		 29 B8 63 E5 
+		 64 A0 71 0C 
+		 28 00 FF 36 
+		 F0 11 30 03 
+		 00 00 00 0C 
+	];
+};

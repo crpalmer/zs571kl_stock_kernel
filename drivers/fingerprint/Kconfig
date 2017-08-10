@@ -1,0 +1,7 @@
+
+config ELAN_FINGERPRINT_SPI
+	tristate "Elan fingerprint driver"
+
+config SYNA_FINGERPRINT_SPI
+	tristate "Synaptics fingerprint driver"
+

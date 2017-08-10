@@ -1,0 +1,9 @@
+config ANALOGIX_OHIO 
+	tristate "Analogix Type-C interface support"
+	help
+        	Analogix type-c interface is a  chip support USB PD protocol device
+
+config OCM_DEBUG_PD
+	tristate "type-c debug support"
+	help
+		Analogix type-c debug log
