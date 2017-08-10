@@ -607,6 +607,9 @@ static void msm_thermal_update_freq(bool is_shutdown, bool mitigate)
 	uint32_t cpu;
 	bool update = false;
 
+	if (is_shutdown)
+		return;
+
 	for_each_possible_cpu(cpu) {
 		if (msm_thermal_info.freq_mitig_control_mask
 			& BIT(cpu)) {

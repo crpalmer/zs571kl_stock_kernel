@@ -354,6 +354,16 @@ static void gpio_keys_gpio_work_func(struct work_struct *work)
 {
 	struct gpio_button_data *bdata =
 		container_of(work, struct gpio_button_data, work);
+	const struct gpio_keys_button *button = bdata->button;
+	unsigned int type = button->type ?: EV_KEY;
+
+	if (type == EV_KEY) {
+		int state;
+
+		state = (__gpio_get_value(button->gpio) ? 1 : 0) ^ button->active_low;
+		pr_info("%s: gpio_keys: keypad: %s %s\n", __func__,
+		button->desc, state ? "Pressed":"Released");
+	}
 
 	gpio_keys_gpio_report_event(bdata);
 

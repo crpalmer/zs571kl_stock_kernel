@@ -213,6 +213,8 @@ int Laser_Enable(enum msm_laser_focus_atd_device_trun_on_type val){
 
 		dev_cci_init(laura_t);
 
+		msleep(1); //wait for power stable
+
 		if(val == MSM_LASER_FOCUS_DEVICE_APPLY_CALIBRATION)
 			rc = Laser_power_up_init_interface(laura_t, DO_CAL, &calibration_flag);
 		else

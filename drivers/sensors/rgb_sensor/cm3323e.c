@@ -817,15 +817,17 @@ static ssize_t asusRgbSetIT_proc_write(struct file *filp, const char __user *buf
 		size_t len, loff_t *data)
 {
 	int val;
-	char messages[256];
+	char messages[256]={'\0'};
 	if (len > 256) {
 		len = 256;
 	}
 	if (copy_from_user(messages, buff, len)) {
 		return -EFAULT;
 	}
-
+        RGB_DBG("%s: messages : %s\n", __func__, messages);
 	val = (int)simple_strtol(messages, NULL, 10);
+        RGB_DBG("%s: val : %d\n", __func__, val);
+
 	rgbSensor_itSet_ms(val);
 	RGB_DBG("%s: %d\n", __func__, val);
 	return len;

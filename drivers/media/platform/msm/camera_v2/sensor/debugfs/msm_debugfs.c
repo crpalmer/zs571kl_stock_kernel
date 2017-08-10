@@ -1411,23 +1411,24 @@ static int i2c_read_thu_imx318(uint8_t *value, int num, uint8_t *read_data, int 
 	ret |= i2c_write(client, 0x3373, read_num, 1); // 1 means data type is byte
 	ret |= i2c_write(client, 0x3374, num, 1);
 	for (i = 0; i < num; i++) {
-		pr_err("%d write 0x%x 0x%x\n", i, 0x3378+i, (uint16_t)value[i]);
+		//pr_err("%d write 0x%x 0x%x\n", i, 0x3378+i, (uint16_t)value[i]);
 		ret |= i2c_write(client, 0x3378+i, (uint16_t)value[i], 1);
 	}
 	ret |= i2c_write(client, 0x3370, 0x82, 1);
+	usleep_range(100, 110);
 
 	/* polling to make sure the communication is done */
 	for (i = 0; i < 300; i++) {
 		i2c_read(client, 0x3370, &status_0x3370, 1);
-		pr_err("%s: %d, command send status polling=0x%x\n", __func__, i, status_0x3370);
 		if ((status&0x80)==0)
 			break;
+		pr_err("%s: %d, command send status polling=0x%x\n", __func__, i, status_0x3370);
 		usleep_range(10000, 11000);
 	}
 	/* read data from vcm */
 	for (i = 0; i < read_num; i++) {
 		i2c_read(client, 0x3378+num+i, (uint16_t*)&(read_data[i]), 1);
-		pr_err("%s: read_data[%d]=0x%x\n", __func__, i, read_data[i]);
+		pr_debug("%s: read_data[%d]=0x%x\n", __func__, i, read_data[i]);
 	}
 
 	return ret;

@@ -25,6 +25,9 @@ extern int pm_stay_unattended_period;
 extern void pmsp_print(void);
 extern void print_pm_cpuinfo(void);
 
+unsigned int ipc_activate_count = 0, ipc_deactivate_count = 0;
+#define IPC_COUNT_LIMIT 5
+
 struct atctive_wakelock {
 	char wakelock_name[64];
 };
@@ -445,6 +448,11 @@ static void wakeup_source_activate(struct wakeup_source *ws)
 	/* Increment the counter of events in progress. */
 	cec = atomic_inc_return(&combined_event_count);
 
+	if(ws->name && ipc_activate_count < IPC_COUNT_LIMIT && (strstr(ws->name, "_PowerManagerSer") || strstr(ws->name, "_ActivityManager"))) {
+		++ ipc_activate_count;
+		pr_err("Wakeup source (%s) activated, active_count = %lu\n", ws->name, ws->active_count);
+	}
+
 	trace_wakeup_source_activate(ws->name, cec);
 }
 
@@ -570,6 +578,11 @@ static void wakeup_source_deactivate(struct wakeup_source *ws)
 	 * couter of wakeup events in progress simultaneously.
 	 */
 	cec = atomic_add_return(MAX_IN_PROGRESS, &combined_event_count);
+
+	if(ws->name && ipc_deactivate_count < IPC_COUNT_LIMIT && (strstr(ws->name, "_PowerManagerSer") || strstr(ws->name, "_ActivityManager"))) {
+		++ ipc_deactivate_count;
+		pr_err("Wakeup source (%s) deactivated, relax_count = %lu\n", ws->name, ws->relax_count);
+	}
 	trace_wakeup_source_deactivate(ws->name, cec);
 
 	split_counters(&cnt, &inpr);
@@ -851,6 +864,8 @@ bool pm_wakeup_pending(void)
 void pm_system_wakeup(void)
 {
 	pm_abort_suspend = true;
+	ipc_activate_count = 0;
+	ipc_deactivate_count = 0;
 	freeze_wake();
 }
 

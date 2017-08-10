@@ -1760,7 +1760,7 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 		hrtimer_cancel(&hap->auto_res_err_poll_timer);
 
 	hrtimer_cancel(&hap->hap_timer);
-	//printk("[Vibrator] %s : value=%d , state=%d !\n", __func__, value, hap->state);
+	printk("[Vibrator] %s : value=%d , state=%d \n", __func__, value, hap->state);
 	if (value == 0) {
 		if (hap->state == 0) {
 			if (g_ASUS_hwID >= 4) {
@@ -1856,7 +1856,7 @@ static void qpnp_hap_worker(struct work_struct *work)
 	if (g_ASUS_hwID < 4) {
 		if (hap->vcc_pon) {
 			reg_en = regulator_enable(hap->vcc_pon);
-			//printk("[Vibrator] regulator_enable(hap->vcc_pon) !!!!!\n");
+			printk("[Vibrator] %s, vibrator on (hwID < 4)\n", __func__);
 			if (reg_en)
 				pr_err("%s: could not enable vcc_pon regulator\n",
 					__func__);
@@ -1865,8 +1865,9 @@ static void qpnp_hap_worker(struct work_struct *work)
 	else {
 		if (hap->power_status == 1) {
 			reg_en = gpio_direction_output(hap->power_gpio, 1);
+			printk("[Vibrator] %s, vibrator on (hwID = 4)\n", __func__);
 			if (reg_en)
-				printk("[Vibrator] power on failed !!!!!\n");
+				printk("[Vibrator] power on failed\n");
 			/*else
 				printk("[Vibrator] %s : power on !!!, power_status = %d\n", __func__, hap->power_status);*/
 		}
@@ -1890,7 +1891,7 @@ static void qpnp_hap_worker(struct work_struct *work)
 	if (g_ASUS_hwID < 4) {
 		if (hap->vcc_pon && !reg_en) {
 			rc = regulator_disable(hap->vcc_pon);
-			//printk("[Vibrator] regulator_disable(hap->vcc_pon); !!!!!\n");
+			printk("[Vibrator] %s, vibrator off (hwID < 4)\n", __func__);
 			if (rc)
 				pr_err("%s: could not disable vcc_pon regulator\n",
 					__func__);
@@ -1899,8 +1900,9 @@ static void qpnp_hap_worker(struct work_struct *work)
 	else {
 		if (hap->power_status == 0) {
 			rc = gpio_direction_output(hap->power_gpio, 0);
+			printk("[Vibrator] %s, vibrator off (hwID = 4)\n", __func__);
 			if (rc)
-				printk("[Vibrator] power off failed !!!!!\n");
+				printk("[Vibrator] power off failed\n");
 			/*else {
 				printk("[Vibrator] %s : power off !!!, power_status = %d\n", __func__, hap->power_status);
 			}*/

@@ -169,7 +169,7 @@ void ASUSEvtlog(const char *fmt, ...)
 		ts.tv_sec -= sys_tz.tz_minuteswest * 60;
 		rtc_time_to_tm(ts.tv_sec, &tm);
 		getrawmonotonic(&ts);
-		sprintf(buffer, "(%ld.%ld)%04d-%02d-%02d %02d:%02d:%02d :", ts.tv_sec, ts.tv_nsec / 1000, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+		sprintf(buffer, "(%ld.%06ld)%04d-%02d-%02d %02d:%02d:%02d :", ts.tv_sec, ts.tv_nsec / 1000, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 		/*printk(buffer);*/
 		va_start(args, fmt);
 		vscnprintf(buffer + strlen(buffer), ASUS_EVTLOG_STR_MAXLEN - strlen(buffer), fmt, args);

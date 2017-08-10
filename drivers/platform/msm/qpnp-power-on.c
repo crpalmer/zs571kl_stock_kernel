@@ -812,6 +812,10 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 
 	cfg->old_state = !!key_status;
 
+	if (cfg->pon_type == PON_RESIN)
+		pr_info("%s-%d: keypad: volume_down %s\n", __func__, __LINE__,
+			!!key_status ? "Pressed" : "Released");
+
 	return 0;
 }
 
@@ -821,10 +825,21 @@ void kpdpwr_hold_6s_callback(unsigned long data)
 	schedule_delayed_work(&kpdpwr_reboot_work, 0);
 }
 
+extern int g_charger_mode;
+extern int g_recovery_mode;
 static void kpdpwr_reboot_work_func(struct work_struct *work)
 {
-	pr_info("PON: hold power key for more than 6s. triggered %s reboot...\n", asus_wdt_warm_reset ? "warm" : "cold");
-	ASUSEvtlog("[PWK] PON: hold power key for more than 6s. triggered %s reboot...\n", asus_wdt_warm_reset ? "warm" : "cold");
+	if (g_charger_mode == 1) {
+		pr_info("PON: cos hold power key for more than 6s. triggered %s reboot...\n", asus_wdt_warm_reset ? "warm" : "cold");
+		ASUSEvtlog("[PWK] PON: cos hold power key for more than 6s. triggered %s reboot...\n", asus_wdt_warm_reset ? "warm" : "cold");
+	} else if (g_recovery_mode == 1) {
+		pr_info("PON: ros hold power key for more than 6s. triggered %s reboot...\n", asus_wdt_warm_reset ? "warm" : "cold");
+		ASUSEvtlog("[PWK] PON: ros hold power key for more than 6s. triggered %s reboot...\n", asus_wdt_warm_reset ? "warm" : "cold");
+	} else {
+		pr_info("PON: hold power key for more than 6s. triggered %s reboot...\n", asus_wdt_warm_reset ? "warm" : "cold");
+		ASUSEvtlog("[PWK] PON: hold power key for more than 6s. triggered %s reboot...\n", asus_wdt_warm_reset ? "warm" : "cold");
+	}
+
 	if (asus_wdt_warm_reset)
 		kernel_restart("powerkey");
 	else

@@ -19,10 +19,14 @@
 #include <linux/percpu.h>
 #include <linux/mmzone.h>
 #include <linux/genhd.h>
+#include <linux/workqueue.h>
 
 #include "sched.h"
 #define LOAD_INT(x) ((x) >> FSHIFT)
 #define LOAD_FRAC(x) LOAD_INT(((x) & (FIXED_1-1)) * 100)
+
+static void check_block_state(struct work_struct *work);
+static DECLARE_WORK(check_block_state_work, check_block_state);
 
 /*
  * Global load-average calculations
@@ -427,6 +431,31 @@ static void get_cpu_stat(void)
 	asus_get_disk_stat();
 }
 
+static int nr_running_count_10s = 0;
+static int nr_running_count_3min = 0;
+
+
+static void check_block_state(struct work_struct *work)
+{
+	if (nr_running() >= 20 ){
+		nr_running_count_10s ++;
+		if (nr_running_count_10s >= 3 && LOAD_INT(avenrun[0]) >= 40 && !nr_running_count_3min){  /*nr over 20 in 30 s*/
+			nr_running_count_3min = 1;
+			pr_info("nr_running is continue over 20 in past 30s  and loadavg is over 40 now\n");
+			show_state_filter(TASK_UNINTERRUPTIBLE);
+			nr_running_count_10s = 0 ;
+		}else if (nr_running_count_3min && nr_running_count_10s >= 9 && LOAD_INT(avenrun[0]) >= 40){ /*nr over 20 in 1.5 mins*/
+			pr_info("nr_running is continue over  20 in past 1.5 mins and loadavg is over 40 now\n");
+			show_state_filter(TASK_UNINTERRUPTIBLE);
+			nr_running_count_10s = 0 ;
+		}
+	}else if (nr_running_count_10s || nr_running_count_3min){
+		nr_running_count_3min = 0;
+		nr_running_count_10s= 0;
+	}
+
+}
+
 static void calc_global_nohz(void)
 {
 	long delta, active, n;
@@ -448,9 +477,10 @@ static void calc_global_nohz(void)
 		calc_load_update += n * LOAD_FREQ;
 	}
 
-	if (calc_load_idx & 1)
+	if (calc_load_idx & 1){
 		printk("loadavg %lu.%02lu  %ld/%d \n", LOAD_INT(avenrun[0]), LOAD_FRAC(avenrun[0]), nr_running(), nr_threads);
-
+		queue_work(system_unbound_wq,&check_block_state_work);
+	}
 	printk("[IO_STATS]: Get IO Stats Start\n");
 	get_cpu_stat();
 	printk("[IO_STATS]: Get IO Stats done\n");

@@ -6288,6 +6288,14 @@ static void smbchg_L1_thermal_policy(struct smbchg_chip *chip, int temp)
 		}
 	}
 
+	/* Normal adapter Thermal Policy */
+	if ((g_dual_charger_flag == DUALCHR_SINGLE)&&(g_hvdcp_flag == HVDCP_NONE)) {
+		if (temp >= therm_L1_temp) {
+			g_thermal_level = THERM_LEVEL_1;
+		} else {
+			g_thermal_level = THERM_LEVEL_0;
+		}
+	}
 }
 
 void smbchg_thermal_policy_work(struct work_struct *work)

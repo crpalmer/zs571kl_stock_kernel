@@ -1174,6 +1174,9 @@ static ssize_t cover_mode_store(struct device *dev,
 	if (!rmi4_data->auto_update_finish) {
 		pr_info("[Synaptics] %s:startup fw updating, action abort\n",
 								__func__);
+	} else if (rmi4_data->suspend) {
+		pr_info("[Synaptics] %s:system not resume, action abort\n",
+								__func__);
 	} else {
 		if (rmi4_data->enable_cover_mode == 1) {
 			synaptics_rmi4_f12_gloved(rmi4_data, 1);
@@ -5470,6 +5473,11 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 	if (rmi4_data->stay_awake)
 		return 0;
+
+	if (rmi4_data->suspend) {
+		pr_info("[Synaptics] Already in suspend state\n");
+		return 0;
+	}
 
 	if (rmi4_data->enable_wakeup_gesture) {
 		printk("[Synaptics] %s: enter gesture mode\n", __func__);

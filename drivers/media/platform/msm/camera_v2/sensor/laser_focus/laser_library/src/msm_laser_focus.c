@@ -331,6 +331,8 @@ int HPTG_I2C_status_check(struct msm_laser_focus_ctrl_t *dev_t, int chip_id_size
 	PowerUp(dev_t);
 	dev_cci_init(dev_t);
 
+	msleep(1); // wait for power stable
+
 	rc = Laser_Match_ID(dev_t, chip_id_size);
 	if (rc < 0)
 		LOG_Handler(LOG_ERR,"%s fail, rc (%d)\n", __func__, rc);
