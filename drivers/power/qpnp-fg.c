@@ -2348,7 +2348,7 @@ static int get_prop_capacity_asus(struct fg_chip *chip){
 		return EMPTY_CAPACITY;
 	else if (msoc == FULL_SOC_RAW)
 		return FULL_CAPACITY;
-	if (therm_debug_time == -1)  // do not print when therm_debug_time use
+	if (chip->update_sram_data_flag == 1 && therm_debug_time == -1)  // do not print when therm_debug_time use
 		pr_err("input_present = %d, pre_usb_present = %d\n", input_present, pre_usb_present);
 	if (input_present){
 		if (pre_usb_present == input_present){
@@ -2655,7 +2655,7 @@ static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 	int i, j, rc = 0;
 	u8 reg[4];
 	int64_t temp;
-	int prcapacity, prsoc, prvoltage, prcurrent, prtemp1, prtemp2;
+	int asus_soc, prcapacity, prsoc, prvoltage, prcurrent, prtemp1, prtemp2;
 	int battid_valid = fg_is_batt_id_valid(chip);
 	int charge_soc, discharge_soc;
 
@@ -2727,6 +2727,7 @@ static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 			pr_info("%d %lld %d\n", i, temp, fg_data[i].value);
 	}
 	/*print battery log*/
+	asus_soc = get_prop_capacity_asus(chip);
 	prcapacity = get_prop_capacity(chip);
 	prsoc = get_sram_prop_now(chip, FG_DATA_BATT_SOC)/100;
 	prvoltage = fg_data[FG_DATA_CPRED_VOLTAGE].value/1000;
@@ -2738,12 +2739,12 @@ static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 
 	if(chip->update_sram_data_flag == 1){
 		printk(KERN_ERR "[BAT][Ser]report Capacity ==>%d %%, Q_UI: %d %%, FCC:%dmAh, BMS:%d %%, V:%dmV, Cur:%dmA, Temp:%d.%dC, VADC: %lld, CP: %d %%, DP: %d %%, Status: %s, M:%02X, S:%02X\n",
-			get_prop_capacity_asus(chip),prcapacity,
+			asus_soc, prcapacity,
 			get_prop_batt_full_charge(), prsoc, prvoltage, prcurrent,
 			prtemp1, prtemp2, adc_temp, charge_soc, discharge_soc,
 			battery_status_str[chip->status], asus_check_smbchg_disable(), asus_check_smb1351_suspend());
 		ASUSEvtlog("[BAT][Ser]report Capacity ==>%d %%, Q_UI: %d %%, FCC:%dmAh, BMS:%d %%, V:%dmV, Cur:%dmA, Temp:%d.%dC, VADC: %lld, CP: %d %%, DP: %d %%, Status: %s, M:%02X, S:%02X\n",
-			get_prop_capacity_asus(chip),prcapacity,
+			asus_soc, prcapacity,
 			get_prop_batt_full_charge(), prsoc, prvoltage, prcurrent,
 			prtemp1, prtemp2, adc_temp, charge_soc, discharge_soc,
 			battery_status_str[chip->status], asus_check_smbchg_disable(), asus_check_smb1351_suspend());
@@ -2755,12 +2756,12 @@ static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 
 	if(chip->asus_force_update_flag == 1){
 		printk(KERN_ERR "[BAT][Ser]report Capacity ==>%d %%, Q_UI: %d %%, FCC:%dmAh, BMS:%d %%, V:%dmV, Cur:%dmA, Temp:%d.%dC, VADC: %lld, CP: %d %%, DP: %d %%, Status: %s, M:%02X, S:%02X\n",
-			get_prop_capacity_asus(chip),prcapacity,
+			asus_soc, prcapacity,
 			get_prop_batt_full_charge(), prsoc, prvoltage, prcurrent,
 			prtemp1, prtemp2, adc_temp, charge_soc, discharge_soc,
 			battery_status_str[chip->status], asus_check_smbchg_disable(), asus_check_smb1351_suspend());
 		ASUSEvtlog("[BAT][Ser]report Capacity ==>%d %%, Q_UI: %d %%, FCC:%dmAh, BMS:%d %%, V:%dmV, Cur:%dmA, Temp:%d.%dC, VADC: %lld, CP: %d %%, DP: %d %%, Status: %s, M:%02X, S:%02X\n",
-			get_prop_capacity_asus(chip),prcapacity,
+			asus_soc, prcapacity,
 			get_prop_batt_full_charge(), prsoc, prvoltage, prcurrent,
 			prtemp1, prtemp2, adc_temp, charge_soc, discharge_soc,
 			battery_status_str[chip->status], asus_check_smbchg_disable(), asus_check_smb1351_suspend());

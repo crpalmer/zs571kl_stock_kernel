@@ -571,6 +571,7 @@ struct smbchg_chip {
 	int asus_pd_volt;
 	int asus_pd_curr;
 	int asus_cc_wa_flag;
+	int asus_cc_trigger_flag;
 
 	enum CHG_TYPE asus_chg_type;
 };
@@ -728,6 +729,7 @@ static int asus_charger_limit_en = 1;
 
 static int demo_app_charger_limit = 60;
 static bool demo_app_status_flag = 0;
+static bool cn_demo_app_status_flag = 0;
 
 static ssize_t demo_app_status_store(struct device *dev,
 		struct device_attribute *devattr, const char *buf, size_t len)
@@ -749,6 +751,28 @@ static ssize_t demo_app_status_show(struct device *dev,
 		struct device_attribute *devattr, char *buf)
 {
 	return sprintf(buf, "%d\n", demo_app_status_flag);
+}
+
+static ssize_t cn_demo_app_status_store(struct device *dev,
+		struct device_attribute *devattr, const char *buf, size_t len)
+{
+	int tmp = 0;
+
+	tmp = buf[0] - 48;
+	if (tmp == 0) {
+		cn_demo_app_status_flag = false;
+		printk("[BAT][CHG] cn_demo_app_status_flag = 0\n");
+	} else if (tmp == 1) {
+		cn_demo_app_status_flag = true;
+		printk("[BAT][CHG] cn_demo_app_status_flag = 1\n");
+	}
+	return len;
+}
+
+static ssize_t cn_demo_app_status_show(struct device *dev,
+		struct device_attribute *devattr, char *buf)
+{
+	return sprintf(buf, "%d\n", cn_demo_app_status_flag);
 }
 
 static int asus_smbchg_probe_done = 0;
@@ -995,6 +1019,7 @@ static DEVICE_ATTR(charger_type, S_IRUGO, charger_type_get, NULL);
 static DEVICE_ATTR(pmi8996_thermal, S_IRUGO, pmi8996_thermal_get, NULL);
 static DEVICE_ATTR(smb1351_thermal, S_IRUGO, smb1351_thermal_get, NULL);
 static DEVICE_ATTR(demo_app_status, S_IRUGO | S_IWUSR, demo_app_status_show, demo_app_status_store);
+static DEVICE_ATTR(cn_demo_app_status, S_IRUGO | S_IWUSR, cn_demo_app_status_show, cn_demo_app_status_store);
 static DEVICE_ATTR(therm_L1_temp, S_IRUGO | S_IWUSR, therm_L1_temp_show, therm_L1_temp_store);
 static DEVICE_ATTR(therm_L2_temp, S_IRUGO | S_IWUSR, therm_L2_temp_show, therm_L2_temp_store);
 static DEVICE_ATTR(therm_L3_temp, S_IRUGO | S_IWUSR, therm_L3_temp_show, therm_L3_temp_store);
@@ -1006,6 +1031,7 @@ static struct attribute *qpnp_smbcharger_attributes[] = {
     &dev_attr_pmi8996_thermal.attr,
     &dev_attr_smb1351_thermal.attr,
     &dev_attr_demo_app_status.attr,
+    &dev_attr_cn_demo_app_status.attr,
     &dev_attr_therm_L1_temp.attr,
     &dev_attr_therm_L2_temp.attr,
     &dev_attr_therm_L3_temp.attr,
@@ -1193,6 +1219,10 @@ int asus_typec_DFP_type(enum typec_power_supply_type type, int voltage_mv, int c
 		pr_err("smbcharger not ready.\n");
 		return -1;
 	}
+
+	/* cc status flag to speed up sdp_retry_work BSP YuXiang */
+	smbchg_dev->asus_cc_trigger_flag = 1;
+
 	if (g_smbchg_chip->asus_cc_wa_flag && type <= TYPEC_3A_CHARGER) {
 		pr_info("ignore incorrect DFP type reported by CC: %d\n", type);
 		return 0;
@@ -1551,24 +1581,29 @@ static int get_prop_batt_capacity(struct smbchg_chip *chip);
 bool g_smb1351_NOT_charging_for_limit = false;
 static int get_prop_batt_status(struct smbchg_chip *chip)
 {
-	int rc, status = POWER_SUPPLY_STATUS_DISCHARGING;
+	int rc;
+	static int status = POWER_SUPPLY_STATUS_DISCHARGING, pre_status = POWER_SUPPLY_STATUS_DISCHARGING;
 	u8 reg = 0, chg_type;
-	bool charger_present, chg_inhibit;
-
+	bool charger_present/*, chg_inhibit*/;
 	charger_present = is_usb_present(chip) | is_dc_present(chip) |
 			  chip->hvdcp_3_det_ignore_uv | chip->force_bc12_ignore_uv |
 			  g_sdp_retry_flag;
+	pre_status = status;
 	if (!charger_present) {
 		pr_info("not charging\n");
-		return POWER_SUPPLY_STATUS_DISCHARGING;
+		status = POWER_SUPPLY_STATUS_DISCHARGING;
+//		return POWER_SUPPLY_STATUS_DISCHARGING;
+		goto out;
 	}
 
 	rc = smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Unable to read RT_STS rc = %d\n", rc);
-		return POWER_SUPPLY_STATUS_UNKNOWN;
+		status = POWER_SUPPLY_STATUS_UNKNOWN;
+//		return POWER_SUPPLY_STATUS_UNKNOWN;
+		goto out;
 	}
-
+/*
 	if (reg & BAT_TCC_REACHED_BIT) {
 		pr_info("charging full\n");
 		return POWER_SUPPLY_STATUS_FULL;
@@ -1579,11 +1614,13 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 		pr_info("charging full\n");
 		return POWER_SUPPLY_STATUS_FULL;
 	}
-
+*/
 	rc = smbchg_read(chip, &reg, chip->chgr_base + CHGR_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Unable to read CHGR_STS rc = %d\n", rc);
-		return POWER_SUPPLY_STATUS_UNKNOWN;
+		status = POWER_SUPPLY_STATUS_UNKNOWN;
+//		return POWER_SUPPLY_STATUS_UNKNOWN;
+		goto out;
 	}
 
 	if (reg & CHG_HOLD_OFF_BIT) {
@@ -1595,8 +1632,8 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 		status = POWER_SUPPLY_STATUS_NOT_CHARGING;
 		goto out;
 	} else if (g_smb1351_NOT_charging_for_limit) {
-		status = POWER_SUPPLY_STATUS_NOT_CHARGING;
 		pr_info("ftm or demo app chg hold off. not charging:%d\n", status);
+		status = POWER_SUPPLY_STATUS_NOT_CHARGING;
 		goto out;
 	}
 
@@ -1620,11 +1657,8 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 		}
 	}
 	/* WA: report FULL when soc = 100 to light green LED */
-	if ((get_prop_batt_capacity(chip) == 100)&&
-		((status == POWER_SUPPLY_STATUS_CHARGING)||
-		(status == POWER_SUPPLY_STATUS_QUICK_CHARGING)||
-		(status == POWER_SUPPLY_STATUS_NOT_QUICK_CHARGING))) {
-		pr_smb(PR_STATUS, "status = %d when soc = 100, so set STATUS_FULL\n", status);
+	if ((get_prop_batt_capacity(chip) == 100) && charger_present) {
+		pr_smb(PR_STATUS, "VBUS = %d, status = %d when soc = 100, so set STATUS_FULL\n", is_usb_present(smbchg_dev), status);
 		status = POWER_SUPPLY_STATUS_FULL;
 		if (!!g_charger_mode) {
 			device_wakeup_disable(chip->dev);
@@ -1632,7 +1666,7 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 		}
 	}
 out:
-	if (therm_debug_time == -1)  //do not print when therm_debug_time use
+	if (status != pre_status && therm_debug_time == -1)  //do not print when therm_debug_time use
 		pr_smb(PR_MISC, "CHGR_STS = 0x%02x, report status = %d\n", reg, status);
 	return status;
 }
@@ -2191,7 +2225,7 @@ static int smbchg_charging_en(struct smbchg_chip *chip, bool en)
 		}
 	}
 
-	if (demo_app_status_flag && enableADF_check()) {
+	if ((demo_app_status_flag && enableADF_check()) || cn_demo_app_status_flag) {
 		if (batt_cap >= demo_app_charger_limit){
 			pr_info("demo app mode. current limit: %d, current capacity: %d. force disable charging\n",
 				demo_app_charger_limit, batt_cap);
@@ -5665,6 +5699,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	/* clear status */
 	chip->pulse_cnt = 0;
 	chip->asus_cc_wa_flag = 0;
+	chip->asus_cc_trigger_flag = 0;
 	g_hvdcp_flag = HVDCP_NONE;
 	g_dual_charger_flag = DUALCHR_UNDEFINED;
 	g_thermal_level = THERM_LEVEL_0;
@@ -6340,7 +6375,7 @@ void smbchg_thermal_policy_work(struct work_struct *work)
 		goto out;
 	}
 
-	if (demo_app_status_flag && enableADF_check()) {
+	if ((demo_app_status_flag && enableADF_check()) || cn_demo_app_status_flag) {
 		pr_smb(PR_STATUS, "disable thermal policy due to demo app mode\n");
 		goto out;
 	}
@@ -6467,7 +6502,7 @@ out:
 			msecs_to_jiffies(next_time*1000));
 	}
 
-	if (demo_app_status_flag && enableADF_check()) {
+	if ((demo_app_status_flag && enableADF_check()) || cn_demo_app_status_flag) {
 		next_time = THERMAL_POLICY_SUS_POLLING_TIME*2;
 		queue_delayed_work(chip->smbchg_work_queue,
 			&chip->thermal_policy_work,
@@ -6668,17 +6703,17 @@ static void smbchg_jeita_flow(struct smbchg_chip *chip)
 			(batt_soc <= 1 && asus_charger_limit_percentage <= 20))
 		{
 			pr_err("ftm mode. re-charge since current capacity level: %d%% lower than %d%%\n", batt_soc, asus_charger_limit_percentage-20);
-			//smbchg_charging_en(chip, true);
+			smbchg_charging_en(chip, true);
 		}
 		else if (asus_charger_limit_percentage <= batt_soc) {
 			smbchg_charging_en(chip, false);
 			goto finish;
 		}
-	} else if (demo_app_status_flag && enableADF_check()) {
+	} else if ((demo_app_status_flag && enableADF_check()) || cn_demo_app_status_flag) {
 		// demoapp charger limit is fixed as 60%. re-charge only when battery capacity is lower than 55%
 		if ( batt_soc <= 55 ) {
 			pr_err("demo app mode. re-charge since current capacity level: %d%% lower than 55%%\n", batt_soc);
-			//smbchg_charging_en(chip, true);
+			smbchg_charging_en(chip, true);
 		} else if (batt_soc >= 60) {
 			smbchg_charging_en(chip, false);
 			goto finish;
@@ -7730,10 +7765,17 @@ int smbchg_charging_flow(struct smbchg_chip *chip, int bc1p2_type)
 					&chip->type_c_det_work,
 					msecs_to_jiffies(7*1000));
 			} else {
-				pr_smb(PR_STATUS, "detect SDP first, re detect after 3s\n");
-				queue_delayed_work(chip->smbchg_work_queue,
-					&chip->sdp_retry_work,
-					msecs_to_jiffies(3*1000));
+				if (smbchg_dev != NULL && smbchg_dev->asus_cc_trigger_flag == 1) {
+					pr_smb(PR_STATUS, "detect SDP first, re detect after 0s because cc status report\n");
+					queue_delayed_work(chip->smbchg_work_queue,
+						&chip->sdp_retry_work,
+						msecs_to_jiffies(0*1000));
+				} else {
+					pr_smb(PR_STATUS, "detect SDP first, re detect after 1s\n");
+					queue_delayed_work(chip->smbchg_work_queue,
+						&chip->sdp_retry_work,
+						msecs_to_jiffies(1*1000));
+				}
 			}
 			break;
 		case USB_OTHERS:
@@ -11590,6 +11632,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->fake_battery_soc = -EINVAL;
 	chip->usb_online = -EINVAL;
 	chip->asus_cc_wa_flag = 0;
+	chip->asus_cc_trigger_flag = 0;
 	dev_set_drvdata(&spmi->dev, chip);
 
 	spin_lock_init(&chip->sec_access_lock);

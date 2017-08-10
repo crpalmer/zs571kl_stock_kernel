@@ -779,6 +779,10 @@ ifeq ($(shell $(CONFIG_SHELL) $(srctree)/scripts/gcc-goto.sh $(CC)), y)
 	KBUILD_CFLAGS += -DCC_HAVE_ASM_GOTO
 endif
 
+ifeq ($(TARGET_SKU), CN)
+	KBUILD_CFLAGS += -DCNKERNEL
+endif
+
 ifneq ($(BUILD_NUMBER),)
        KBUILD_CPPFLAGS += -DASUS_SW_VER=\"$(BUILD_NUMBER)\"
 else
