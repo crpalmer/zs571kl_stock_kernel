@@ -565,6 +565,7 @@ struct smbchg_chip {
 	struct delayed_work	thermal_policy_work;
 	struct delayed_work	type_c_det_work;
 	struct delayed_work	sdp_retry_work;
+	struct delayed_work	force_updating_usb_status_work;
 	struct votable			*hvdcp_enable_votable;
 	enum typec_power_supply_type asus_typec_chg;                                                                                                       
 	int asus_pd_volt;
@@ -5755,6 +5756,18 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	pr_smb(PR_STATUS, "---\n");
 }
 
+void update_usb_status(struct smbchg_chip *chip, bool usb_present, bool force);
+static void smbchg_force_updating_usb_status_work(struct work_struct *work)
+{
+	struct smbchg_chip *chip = container_of(work,
+				struct smbchg_chip,
+				force_updating_usb_status_work.work);
+
+	pr_smb(PR_STATUS, "+++\n");
+	update_usb_status(chip, 0, true);
+	pr_smb(PR_STATUS, "---\n");
+}
+
 static bool is_usbin_uv_high(struct smbchg_chip *chip)
 {
 	int rc;
@@ -7198,11 +7211,13 @@ static void smbchg_rerun_bc1p2(struct smbchg_chip* chip)
 	}
 	return;
 handle_removal:
-	pr_smb(PR_STATUS, "rerun bc1.2 failed!!!!\n");
+	pr_smb(PR_STATUS, "rerun bc1.2 failed!!! Force updating usb status\n");
 	chip->force_bc12_ignore_uv = false;
 	if (!is_usb_present(chip)) {
 		pr_smb(PR_STATUS, "detect usb truly remove, force to update\n");
-		update_usb_status(chip, 0, true);
+		queue_delayed_work(chip->smbchg_work_queue,
+			&chip->force_updating_usb_status_work,
+			msecs_to_jiffies(0));
 	}
 	return;
 }
@@ -11560,6 +11575,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	INIT_DELAYED_WORK(&chip->thermal_policy_work, smbchg_thermal_policy_work);
 	INIT_DELAYED_WORK(&chip->type_c_det_work, smbchg_type_c_det_work);
 	INIT_DELAYED_WORK(&chip->sdp_retry_work, smbchg_sdp_retry_work);
+	INIT_DELAYED_WORK(&chip->force_updating_usb_status_work, smbchg_force_updating_usb_status_work);
 
 	init_completion(&chip->src_det_lowered);
 	init_completion(&chip->src_det_raised);

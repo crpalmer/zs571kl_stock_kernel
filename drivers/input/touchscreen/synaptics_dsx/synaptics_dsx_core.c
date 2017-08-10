@@ -5349,8 +5349,10 @@ static int synaptics_rmi4_fb_notifier_cb(struct notifier_block *self,
 				synaptics_rmi4_suspend(&rmi4_data->pdev->dev);
 				rmi4_data->fb_ready = false;
 			}else if (*transition == FB_BLANK_NORMAL) {
-				printk("[Synaptics] enter always_on_panel mode\n");
-				rmi4_data->always_on_panel = true;
+				if (!rmi4_data->suspend) {
+					printk("[Synaptics] enter always_on_panel mode\n");
+					rmi4_data->always_on_panel = true;
+				}
 				synaptics_rmi4_suspend(&rmi4_data->pdev->dev);
 				rmi4_data->fb_ready = false;
 			}
